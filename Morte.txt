@@ -1,0 +1,50 @@
+import robocode.*;
+
+public class morte extends AdvancedRobot {
+
+    // Variáveis para armazenar informações do robô e do ambiente
+    private double battlefieldWidth;
+    private double battlefieldHeight;
+    private double myX;
+    private double myY;
+    private double myHeading;
+    private double myEnergy;
+    private double enemyX;
+    private double enemyY;
+    private double enemyHeading;
+    private double enemyEnergy;
+    private boolean isAlliedRobot;
+
+    // Método inicial do robô
+    public void run() {
+        // Ajustar configurações do robô
+        setBodyColor(Color.RED);
+        setGunColor(Color.BLACK);
+        setRadarColor(Color.BLUE);
+        setScanColor(Color.GREEN);
+
+        // Inicializar variáveis
+        battlefieldWidth = getBattleFieldWidth();
+        battlefieldHeight = getBattleFieldHeight();
+        myX = getX();
+        myY = getY();
+        myHeading = getHeading();
+        myEnergy = getEnergy();
+
+        // Loop principal do robô
+        while (true) {
+            // Atualizar informações do robô e do ambiente
+            updateMyInfo();
+            updateEnemyInfo();
+            updateAlliedRobots();
+
+            // Selecionar estratégia com base na situação
+            selectStrategy();
+
+            // Executar ações da estratégia selecionada
+            executeStrategy();
+        }
+    }
+
+    // ... (Outros métodos para implementar as funcionalidades) ...
+}
