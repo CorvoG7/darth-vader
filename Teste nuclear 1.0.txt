@@ -1,0 +1,124 @@
+import robocode.*;
+import java.awt.Color;
+import java.util.HashMap;
+import java.util.Map;
+
+public class NuclearCombatRobot extends AdvancedRobot {
+    private Map<String, EnemyInfo> enemyMap = new HashMap<>();
+    private double myEnergy = 100.0;
+
+    public void run() {
+        // Configuração inicial do robô
+        setColors(Color.red, Color.blue, Color.yellow);
+        setAdjustGunForRobotTurn(true);
+        setAdjustRadarForGunTurn(true);
+
+        while (true) {
+            // Varrer o radar para detectar inimigos
+            turnRadarRight(360);
+
+            // Avaliar a situação tática e tomar decisões
+            evaluateTacticalSituation();
+            engageEnemies();
+            maneuverForSurvival();
+
+            // Disparar tiros
+            if (getGunHeat() == 0 && getEnergy() > 10) {
+                fire(Math.min(3.0, getEnergy() / 4.0));
+            }
+        }
+    }
+
+    private void evaluateTacticalSituation() {
+        // Atualizar informações sobre os inimigos
+        updateEnemyMap();
+
+        // Avaliar a situação tática, como prioridade de alvos e ameaças
+        // Implementar lógica para coordenar ações com outros robôs, se necessário
+    }
+
+    private void engageEnemies() {
+        // Selecionar o alvo prioritário e engajá-lo
+        EnemyInfo priorityTarget = getPriorityTarget();
+        if (priorityTarget != null) {
+            engageTarget(priorityTarget);
+        }
+    }
+
+    private void maneuverForSurvival() {
+        // Verificar se é necessário executar manobras evasivas
+        if (myEnergy < getLowestEnemyEnergy()) {
+            executeEvasiveManeuver();
+        }
+    }
+
+    private void updateEnemyMap() {
+        // Atualizar informações sobre os inimigos detectados
+        for (ScannedRobotEvent e : getScannedRobots()) {
+            String name = e.getName();
+            if (!enemyMap.containsKey(name)) {
+                enemyMap.put(name, new EnemyInfo());
+            }
+            enemyMap.get(name).update(e);
+        }
+    }
+
+    private EnemyInfo getPriorityTarget() {
+        // Implementar lógica para selecionar o alvo prioritário com base na situação tática
+        // Considerar fatores como energia, distância, ameaça, etc.
+        return null;
+    }
+
+    private void engageTarget(EnemyInfo target) {
+        // Manter a mira fixa no alvo e se aproximar dele
+        turnGunRight(normalizeBearing(target.getBearing() - getGunHeadingRadians()));
+        double distance = Math.sqrt(Math.pow(target.getDistance() * Math.sin(target.getBearing()), 2) + Math.pow(target.getDistance() * Math.cos(target.getBearing()), 2));
+        if (distance > 100) {
+            ahead(distance - 100);
+        } else {
+            back(100 - distance);
+        }
+    }
+
+    private void executeEvasiveManeuver() {
+        // Implementar lógica para executar manobras evasivas, como desviar de tiros
+        turnRight(90);
+        ahead(50);
+        turnLeft(90);
+    }
+
+    private void onHitByBullet(HitByBulletEvent e) {
+        // Atualizar informações sobre a minha energia
+        myEnergy = getEnergy();
+    }
+
+    private double normalizeBearing(double bearing) {
+        while (bearing >  Math.PI) bearing -= 2 * Math.PI;
+        while (bearing < -Math.PI) bearing += 2 * Math.PI;
+        return bearing;
+    }
+
+    private class EnemyInfo {
+        private double bearing;
+        private double distance;
+        private double energy;
+
+        public void update(ScannedRobotEvent e) {
+            bearing = e.getBearingRadians();
+            distance = e.getDistance();
+            energy = e.getEnergy();
+        }
+
+        public double getBearing() {
+            return bearing;
+        }
+
+        public double getDistance() {
+            return distance;
+        }
+
+        public double getEnergy() {
+            return energy;
+        }
+    }
+}
