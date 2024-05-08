@@ -1,6 +1,6 @@
 import robocode.*;
 
-public class RicoFR extends AdvancedRobot {
+public class LucianaFR extends AdvancedRobot {
     // Variáveis para armazenar informações do robô e do ambiente
     private double myX;
     private double myY;
