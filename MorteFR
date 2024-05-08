@@ -2,27 +2,22 @@ import robocode.*;
 import java.awt.Color;
 
 public class MorteFR extends AdvancedRobot {
-    private double myX;
-    private double myY;
     private double enemyX;
     private double enemyY;
+    private double enemyHeading;
+    private double enemyEnergy;
+    private double myEnergy;
 
     public void run() {
         setColors(Color.BLUE, Color.BLUE, Color.BLUE); // Definir cores do robô
 
         while (true) {
-            updateMyInfo();
             updateEnemyInfo();
-
+            updateMyInfo();
             selectStrategy();
             executeStrategy();
             execute();
         }
-    }
-
-    private void updateMyInfo() {
-        myX = getX();
-        myY = getY();
     }
 
     private void updateEnemyInfo() {
@@ -31,55 +26,87 @@ public class MorteFR extends AdvancedRobot {
             double angleToEnemy = getHeadingRadians() + closestEnemy.getBearingRadians();
             enemyX = getX() + Math.sin(angleToEnemy) * closestEnemy.getDistance();
             enemyY = getY() + Math.cos(angleToEnemy) * closestEnemy.getDistance();
+            enemyHeading = closestEnemy.getHeading();
+            enemyEnergy = closestEnemy.getEnergy();
         }
     }
 
+    private void updateMyInfo() {
+        myEnergy = getEnergy();
+    }
+
     private ScannedRobotEvent getClosestEnemy() {
-        ScannedRobotEvent closestEnemy = null;
-        double minDistance = Double.MAX_VALUE;
+        return getScannedRobotEvents().stream()
+                .filter(this::isEnemyIdentified)
+                .min(Comparator.comparing(ScannedRobotEvent::getDistance))
+                .orElse(null);
+    }
 
-        for (ScannedRobotEvent enemy : getScannedRobotEvents()) {
-            double distance = enemy.getDistance();
-            if (distance < minDistance) {
-                minDistance = distance;
-                closestEnemy = enemy;
-            }
-        }
-
-        return closestEnemy;
+    private boolean isEnemyIdentified(ScannedRobotEvent enemy) {
+        return !new Teammate(enemy.getName()).isTeammate() && enemy.getDistance() < 100 && enemy.getEnergy() > myEnergy;
     }
 
     private void selectStrategy() {
         if (isCloseToEnemy()) {
-            attackEnemy();
+            if (shouldAttack()) {
+                attackEnemy();
+            } else {
+                evadeEnemy();
+            }
         } else {
-            avoidEnemy();
+            chaseEnemy();
         }
     }
 
     private void executeStrategy() {
         if (isCloseToEnemy()) {
-            fire(1);
+            if (shouldAttack()) {
+                turnGunToEnemy();
+                fire(1);
+            } else {
+                turnRight(90);
+                ahead(100);
+            }
         } else {
-            turnRight(90);
+            turnTowardsEnemy();
             ahead(100);
         }
     }
 
     private void attackEnemy() {
+        turnGunToEnemy();
         fire(1);
     }
 
-    private void avoidEnemy() {
+    private void evadeEnemy() {
         turnRight(90);
         ahead(100);
     }
 
+    private void chaseEnemy() {
+        turnTowardsEnemy();
+        ahead(100);
+    }
+
     private boolean isCloseToEnemy() {
-        return getDistanceToEnemy() < 50;
+        return getDistanceToEnemy() < 100;
+    }
+
+    private boolean shouldAttack() {
+        return myEnergy > enemyEnergy;
+    }
+
+    private void turnTowardsEnemy() {
+        double bearing = Utils.normalRelativeAngle(Math.atan2(enemyX - getX(), enemyY - getY()) - getHeadingRadians());
+        turnRight(Math.toDegrees(bearing));
+    }
+
+    private void turnGunToEnemy() {
+        double bearing = Utils.normalRelativeAngle(Math.atan2(enemyX - getX(), enemyY - getY()) - getGunHeadingRadians());
+        turnGunRight(Math.toDegrees(bearing));
     }
 
     private double getDistanceToEnemy() {
-        return Math.sqrt(Math.pow(enemyX - myX, 2) + Math.pow(enemyY - myY, 2));
+        return Math.hypot(enemyX - getX(), enemyY - getY());
     }
 }
