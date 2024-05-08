@@ -2,65 +2,38 @@ import robocode.*;
 import java.awt.Color;
 
 public class MorteFR extends AdvancedRobot {
-    // Variáveis para armazenar informações do robô e do ambiente
     private double myX;
     private double myY;
-    private double myHeading;
-    private double myEnergy;
     private double enemyX;
     private double enemyY;
-    private double enemyHeading;
-    private double enemyEnergy;
-    private boolean isAlliedRobot;
 
-    // Método inicial do robô
     public void run() {
-        // Ajustar configurações do robô
-        setBodyColor(Color.BLUE);
-        setGunColor(Color.BLUE);
-        setRadarColor(Color.BLUE);
-        setScanColor(Color.BLUE);
+        setColors(Color.BLUE, Color.BLUE, Color.BLUE); // Definir cores do robô
 
-        // Loop principal do robô
         while (true) {
-            // Atualizar informações do robô e do ambiente
             updateMyInfo();
             updateEnemyInfo();
-            updateAlliedRobots();
 
-            // Selecionar estratégia com base na situação
             selectStrategy();
-
-            // Executar ações da estratégia selecionada
             executeStrategy();
+            execute();
         }
     }
 
-    // Método para atualizar informações do robô
     private void updateMyInfo() {
         myX = getX();
         myY = getY();
-        myHeading = getHeading();
-        myEnergy = getEnergy();
     }
 
-    // Método para atualizar informações do inimigo
     private void updateEnemyInfo() {
         ScannedRobotEvent closestEnemy = getClosestEnemy();
         if (closestEnemy != null) {
-            enemyX = getX() + closestEnemy.getDistance() * Math.sin(Math.toRadians(getHeading() + closestEnemy.getBearing()));
-            enemyY = getY() + closestEnemy.getDistance() * Math.cos(Math.toRadians(getHeading() + closestEnemy.getBearing()));
-            enemyHeading = closestEnemy.getHeading();
-            enemyEnergy = closestEnemy.getEnergy();
+            double angleToEnemy = getHeadingRadians() + closestEnemy.getBearingRadians();
+            enemyX = getX() + Math.sin(angleToEnemy) * closestEnemy.getDistance();
+            enemyY = getY() + Math.cos(angleToEnemy) * closestEnemy.getDistance();
         }
     }
 
-    // Método para atualizar informações dos robôs aliados
-    private void updateAlliedRobots() {
-        // Não há robôs aliados nesse exemplo
-    }
-
-    // Método para encontrar o inimigo mais próximo
     private ScannedRobotEvent getClosestEnemy() {
         ScannedRobotEvent closestEnemy = null;
         double minDistance = Double.MAX_VALUE;
@@ -76,53 +49,37 @@ public class MorteFR extends AdvancedRobot {
         return closestEnemy;
     }
 
-    // Método para selecionar estratégia
     private void selectStrategy() {
-        // Selecionar estratégia com base na situação
         if (isCloseToEnemy()) {
-            // Atacar inimigo
             attackEnemy();
         } else {
-            // Evitar inimigo
             avoidEnemy();
         }
     }
 
-    // Método para executar ações da estratégia selecionada
     private void executeStrategy() {
-        // Executar ações da estratégia selecionada
         if (isCloseToEnemy()) {
-            // Atacar inimigo
             fire(1);
         } else {
-            // Evitar inimigo
             turnRight(90);
             ahead(100);
         }
     }
 
-    // Método para atacar inimigo
     private void attackEnemy() {
-        // Atacar inimigo
         fire(1);
     }
 
-    // Método para evitar inimigo
     private void avoidEnemy() {
-        // Evitar inimigo
         turnRight(90);
         ahead(100);
     }
 
-    // Método para verificar se o robô está próximo do inimigo
     private boolean isCloseToEnemy() {
-        // Verificar se o robô está próximo do inimigo
         return getDistanceToEnemy() < 50;
     }
 
-    // Método para calcular a distância do robô ao inimigo
     private double getDistanceToEnemy() {
-        // Calcular a distância do robô ao inimigo
         return Math.sqrt(Math.pow(enemyX - myX, 2) + Math.pow(enemyY - myY, 2));
     }
 }
