@@ -1,7 +1,7 @@
 import robocode.*;
 import java.awt.Color;
 
-public class mortefr extends AdvancedRobot {
+public class Mortefr extends AdvancedRobot {
     // Variáveis para armazenar informações do robô e do ambiente
     private double myX;
     private double myY;
