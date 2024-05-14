@@ -4,59 +4,74 @@ import java.awt.Color;
 public class MorteFR extends AdvancedRobot {
     private static final double FIRE_POWER = 3; // Poder de fogo dos tiros
     private static final double MOVE_DISTANCE = 100; // Distância de movimento
-    private static final double WALL_MARGIN = 40; // Margem de segurança em relação às paredes
+    private static final double WALL_MARGIN = 60; // Margem de segurança em relação às paredes
+    private static final double GUN_TURN_RATE = Math.PI / 18; // Taxa de rotação da arma
+
+    private boolean movingForward = true; // Indica se o robô está se movendo para frente
+    private double lastEnemyEnergy = 100; // Energia do último inimigo escaneado
 
     public void run() {
         setColors(Color.red, Color.blue, Color.green); // Configuração das cores
 
         while (true) {
-            mover(); // Comportamento de movimento
+            executarMovimento(); // Comportamento de movimento
             mirar(); // Comportamento de mira
+            executarAcoes(); // Execução de ações estratégicas
             execute(); // Execução dos comandos
         }
     }
 
     public void onScannedRobot(ScannedRobotEvent e) {
-        double absoluteBearing = getHeadingRadians() + e.getBearingRadians();
-        double bearingFromGun = robocode.util.Utils.normalRelativeAngle(absoluteBearing - getGunHeadingRadians());
+        double bearingFromGun = robocode.util.Utils.normalRelativeAngle(getHeadingRadians() + e.getBearingRadians() - getGunHeadingRadians());
         turnGunRightRadians(bearingFromGun);
 
-        if (Math.abs(bearingFromGun) <= 3) {
+        if (Math.abs(bearingFromGun) <= GUN_TURN_RATE && getGunHeat() == 0) {
+            // Dispara somente se a arma estiver pronta e o ângulo de mira for pequeno o suficiente
             fire(FIRE_POWER);
         }
+
+        // Armazena a energia do inimigo para futuras comparações
+        lastEnemyEnergy = e.getEnergy();
     }
 
     public void onHitByBullet(HitByBulletEvent e) {
         // Quando atingido por um tiro, inverte a direção
         setAhead(MOVE_DISTANCE * -1);
-        execute();
     }
 
     public void onHitWall(HitWallEvent e) {
         // Quando atinge a parede, faz uma manobra para se afastar
-        setBack(MOVE_DISTANCE);
-        execute();
+        movingForward = !movingForward;
+        setAhead(MOVE_DISTANCE * (movingForward ? 1 : -1));
     }
 
-    private void mover() {
-        // Movimento circular linear antecipado para desviar dos tiros
-        double angle = getHeadingRadians() + Math.PI / 2 * Math.signum(Math.sin(getTime() / 5));
-        double x = getX() + MOVE_DISTANCE * Math.sin(angle);
-        double y = getY() + MOVE_DISTANCE * Math.cos(angle);
+    private void executarMovimento() {
+        // Movimento linear antecipado para desviar dos tiros e evitar paredes
+        if (movingForward) {
+            setAhead(Double.POSITIVE_INFINITY);
+        } else {
+            setBack(Double.POSITIVE_INFINITY);
+        }
 
         // Verifica se está perto das paredes e ajusta o movimento para evitar colisões
-        if (x > WALL_MARGIN && y > WALL_MARGIN && x < getBattleFieldWidth() - WALL_MARGIN && y < getBattleFieldHeight() - WALL_MARGIN) {
-            setAhead(MOVE_DISTANCE);
-            setTurnRightRadians(Math.tan(Math.PI / 2 * Math.signum(Math.sin(getTime() / 5))));
-        } else {
-            setAhead(MOVE_DISTANCE * -1);
-            setTurnRightRadians(Math.tan(Math.PI / 2 * Math.signum(Math.sin(getTime() / 5))));
+        if (getX() <= WALL_MARGIN || getY() <= WALL_MARGIN ||
+            getX() >= getBattleFieldWidth() - WALL_MARGIN || getY() >= getBattleFieldHeight() - WALL_MARGIN) {
+            movingForward = !movingForward;
+            setAhead(MOVE_DISTANCE * (movingForward ? 1 : -1));
         }
     }
 
     private void mirar() {
-        // Mantém o radar girando para procurar inimigos
+        // Ajusta a mira para o inimigo mais próximo
         setTurnRadarRightRadians(Double.POSITIVE_INFINITY);
+    }
+
+    private void executarAcoes() {
+        // Verifica se o inimigo está atirando mais fraco do que antes e se aproxima para atacar
+        if (lastEnemyEnergy - getEnergy() > 0.1) {
+            setTurnRightRadians(robocode.util.Utils.normalRelativeAngle(getHeadingRadians() + lastEnemyEnergy - getEnergy()));
+            setAhead(MOVE_DISTANCE);
+        }
     }
 }
 
