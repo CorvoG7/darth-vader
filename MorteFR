@@ -2,111 +2,61 @@ import robocode.*;
 import java.awt.Color;
 
 public class MorteFR extends AdvancedRobot {
-    private double enemyX;
-    private double enemyY;
-    private double enemyHeading;
-    private double enemyEnergy;
-    private double myEnergy;
+    private static final double FIRE_POWER = 3; // Poder de fogo dos tiros
+    private static final double MOVE_DISTANCE = 100; // Distância de movimento
+    private static final double WALL_MARGIN = 40; // Margem de segurança em relação às paredes
 
     public void run() {
-        setColors(Color.BLUE, Color.BLUE, Color.BLUE); // Definir cores do robô
+        setColors(Color.red, Color.blue, Color.green); // Configuração das cores
 
         while (true) {
-            updateEnemyInfo();
-            updateMyInfo();
-            selectStrategy();
-            executeStrategy();
-            execute();
+            mover(); // Comportamento de movimento
+            mirar(); // Comportamento de mira
+            execute(); // Execução dos comandos
         }
     }
 
-    private void updateEnemyInfo() {
-        ScannedRobotEvent closestEnemy = getClosestEnemy();
-        if (closestEnemy != null) {
-            double angleToEnemy = getHeadingRadians() + closestEnemy.getBearingRadians();
-            enemyX = getX() + Math.sin(angleToEnemy) * closestEnemy.getDistance();
-            enemyY = getY() + Math.cos(angleToEnemy) * closestEnemy.getDistance();
-            enemyHeading = closestEnemy.getHeading();
-            enemyEnergy = closestEnemy.getEnergy();
+    public void onScannedRobot(ScannedRobotEvent e) {
+        double absoluteBearing = getHeadingRadians() + e.getBearingRadians();
+        double bearingFromGun = Utils.normalRelativeAngle(absoluteBearing - getGunHeadingRadians());
+        turnGunRightRadians(bearingFromGun);
+
+        if (Math.abs(bearingFromGun) <= 3) {
+            fire(FIRE_POWER);
         }
     }
 
-    private void updateMyInfo() {
-        myEnergy = getEnergy();
+    public void onHitByBullet(HitByBulletEvent e) {
+        // Quando atingido por um tiro, inverte a direção
+        setAhead(MOVE_DISTANCE * -1);
+        execute();
     }
 
-    private ScannedRobotEvent getClosestEnemy() {
-        return getScannedRobotEvents().stream()
-                .filter(this::isEnemyIdentified)
-                .min(Comparator.comparing(ScannedRobotEvent::getDistance))
-                .orElse(null);
+    public void onHitWall(HitWallEvent e) {
+        // Quando atinge a parede, faz uma manobra para se afastar
+        setBack(MOVE_DISTANCE);
+        execute();
     }
 
-    private boolean isEnemyIdentified(ScannedRobotEvent enemy) {
-        return !new Teammate(enemy.getName()).isTeammate() && enemy.getDistance() < 100 && enemy.getEnergy() > myEnergy;
-    }
+    private void mover() {
+        // Movimento circular linear antecipado para desviar dos tiros
+        double angle = getHeadingRadians() + Math.PI / 2 * Math.signum(Math.sin(getTime() / 5));
+        double x = getX() + MOVE_DISTANCE * Math.sin(angle);
+        double y = getY() + MOVE_DISTANCE * Math.cos(angle);
 
-    private void selectStrategy() {
-        if (isCloseToEnemy()) {
-            if (shouldAttack()) {
-                attackEnemy();
-            } else {
-                evadeEnemy();
-            }
+        // Verifica se está perto das paredes e ajusta o movimento para evitar colisões
+        if (x > WALL_MARGIN && y > WALL_MARGIN && x < getBattleFieldWidth() - WALL_MARGIN && y < getBattleFieldHeight() - WALL_MARGIN) {
+            setAhead(MOVE_DISTANCE);
+            setTurnRightRadians(Math.tan(Math.PI / 2 * Math.signum(Math.sin(getTime() / 5))));
         } else {
-            chaseEnemy();
+            setAhead(MOVE_DISTANCE * -1);
+            setTurnRightRadians(Math.tan(Math.PI / 2 * Math.signum(Math.sin(getTime() / 5))));
         }
     }
 
-    private void executeStrategy() {
-        if (isCloseToEnemy()) {
-            if (shouldAttack()) {
-                turnGunToEnemy();
-                fire(1);
-            } else {
-                turnRight(90);
-                ahead(100);
-            }
-        } else {
-            turnTowardsEnemy();
-            ahead(100);
-        }
-    }
-
-    private void attackEnemy() {
-        turnGunToEnemy();
-        fire(1);
-    }
-
-    private void evadeEnemy() {
-        turnRight(90);
-        ahead(100);
-    }
-
-    private void chaseEnemy() {
-        turnTowardsEnemy();
-        ahead(100);
-    }
-
-    private boolean isCloseToEnemy() {
-        return getDistanceToEnemy() < 100;
-    }
-
-    private boolean shouldAttack() {
-        return myEnergy > enemyEnergy;
-    }
-
-    private void turnTowardsEnemy() {
-        double bearing = Utils.normalRelativeAngle(Math.atan2(enemyX - getX(), enemyY - getY()) - getHeadingRadians());
-        turnRight(Math.toDegrees(bearing));
-    }
-
-    private void turnGunToEnemy() {
-        double bearing = Utils.normalRelativeAngle(Math.atan2(enemyX - getX(), enemyY - getY()) - getGunHeadingRadians());
-        turnGunRight(Math.toDegrees(bearing));
-    }
-
-    private double getDistanceToEnemy() {
-        return Math.hypot(enemyX - getX(), enemyY - getY());
+    private void mirar() {
+        // Mantém o radar girando para procurar inimigos
+        setTurnRadarRightRadians(Double.POSITIVE_INFINITY);
     }
 }
+
