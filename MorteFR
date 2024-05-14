@@ -18,7 +18,7 @@ public class MorteFR extends AdvancedRobot {
 
     public void onScannedRobot(ScannedRobotEvent e) {
         double absoluteBearing = getHeadingRadians() + e.getBearingRadians();
-        double bearingFromGun = Utils.normalRelativeAngle(absoluteBearing - getGunHeadingRadians());
+        double bearingFromGun = robocode.util.Utils.normalRelativeAngle(absoluteBearing - getGunHeadingRadians());
         turnGunRightRadians(bearingFromGun);
 
         if (Math.abs(bearingFromGun) <= 3) {
