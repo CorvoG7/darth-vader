@@ -1,106 +1,89 @@
 import robocode.*;
-import java.awt.Color;
+import java.awt.geom.*;
+import java.util.*;
 
 public class LucianaFR extends AdvancedRobot {
-    private static final double FIRE_POWER = 3; // Poder de fogo dos tiros
-    private static final double MOVE_DISTANCE = 100; // Distância de movimento padrão
-    private static final double WALL_MARGIN = 40; // Margem de segurança em relação às paredes
-    private static final double RADAR_TURN_RATE = Math.PI / 4; // Taxa de rotação do radar
-    private static final double GUN_TURN_RATE = Math.PI / 6; // Taxa de rotação da arma
 
-    private boolean movingForward = true; // Indica se o robô está se movendo para frente
+    // Variáveis para armazenar informações importantes
+    private RoboVision roboVision;
+    private List<ScannedRobot> inimigosVisiveis;
+    private Ponto posicaoAtual;
+    private double energiaAtual;
 
+    // Função para inicializar a visão computacional
+    private void inicializarRoboVision() {
+        roboVision = new RoboVision();
+        roboVision.setColors(Color.red, Color.blue, Color.white);
+        addCustomComponent(roboVision);
+    }
+
+    // Função para atualizar a lista de inimigos visíveis
+    private void atualizarInimigosVisiveis() {
+        inimigosVisiveis = new ArrayList<>(roboVision.getVisibleRobots());
+    }
+
+    // Função para atualizar a posição atual do robô
+    private void atualizarPosicaoAtual() {
+        posicaoAtual = new Ponto(getX(), getY());
+    }
+
+    // Função para atualizar a energia atual do robô
+    private void atualizarEnergiaAtual() {
+        energiaAtual = getEnergy();
+    }
+
+    // Função principal do robô
     public void run() {
-        setColors(Color.red, Color.blue, Color.green); // Configuração das cores
+        inicializarRoboVision();
 
         while (true) {
-            // Movimento
-            executarMovimento();
+            atualizarInimigosVisiveis();
+            atualizarPosicaoAtual();
+            atualizarEnergiaAtual();
 
-            // Mira
-            executarMira();
-
-            // Ajuste de velocidade
-            ajustarVelocidade();
-
-            // Verificar se está perto de uma parede
-            verificarProximidadeParede();
-
-            // Verificar se o radar está girando
-            if (getRadarTurnRemaining() == 0) {
-                setTurnRadarRightRadians(Double.POSITIVE_INFINITY); // Girar o radar continuamente
-            }
-
-            execute(); // Execução dos comandos
+            movimentar();
+            selecionarAlvo();
+            atacar();
+            defender();
+            gerenciarEnergia();
         }
     }
 
-    public void onScannedRobot(ScannedRobotEvent e) {
-        // Resposta à detecção de um robô inimigo
-        double absoluteBearing = getHeadingRadians() + e.getBearingRadians();
-        double bearingFromGun = Utils.normalRelativeAngle(absoluteBearing - getGunHeadingRadians());
-        turnGunRightRadians(bearingFromGun);
-
-        if (Math.abs(bearingFromGun) <= GUN_TURN_RATE) {
-            fire(FIRE_POWER);
-        }
+    // Função para movimentar o robô
+    private void movimentar() {
+        // ... (implemente a lógica de movimentação do robô aqui)
     }
 
-    private void executarMovimento() {
-        // Movimentar-se para frente ou para trás
-        if (movingForward) {
-            setAhead(MOVE_DISTANCE);
-        } else {
-            setBack(MOVE_DISTANCE);
-        }
+    // Função para selecionar o alvo ideal
+    private void selecionarAlvo() {
+        // ... (implemente a lógica de seleção de alvo aqui)
     }
 
-    private void executarMira() {
-        // Ajustar a mira para o inimigo mais próximo
-        setTurnGunRightRadians(Utils.normalRelativeAngle(getHeadingRadians() + getBearingRadians() - getGunHeadingRadians()));
+    // Função para atacar o alvo selecionado
+    private void atacar() {
+        // ... (implemente a lógica de ataque aqui)
     }
 
-    private void ajustarVelocidade() {
-        // Ajustar a velocidade com base na distância do inimigo
-        if (getOthers() > 3) {
-            setMaxVelocity(8);
-        } else {
-            setMaxVelocity(5);
-        }
+    // Função para defender o robô de ataques inimigos
+    private void defender() {
+        // ... (implemente a lógica de defesa aqui)
     }
 
-    private void verificarProximidadeParede() {
-        // Verificar se o robô está próximo de uma parede e ajustar o movimento
-        double x = getX();
-        double y = getY();
-        if (x <= WALL_MARGIN || y <= WALL_MARGIN || x >= getBattleFieldWidth() - WALL_MARGIN || y >= getBattleFieldHeight() - WALL_MARGIN) {
-            movingForward = !movingForward;
-        }
+    // Função para gerenciar a energia do robô
+    private void gerenciarEnergia() {
+        // ... (implemente a lógica de gerenciamento de energia aqui)
+    }
+}
+
+// Classe auxiliar para representar um ponto no plano cartesiano
+class Ponto {
+    private double x;
+    private double y;
+
+    public Ponto(double x, double y) {
+        this.x = x;
+        this.y = y;
     }
 
-    public void onHitWall(HitWallEvent e) {
-        // Resposta ao colidir com uma parede
-        movingForward = !movingForward; // Inverte a direção do movimento ao colidir com a parede
-    }
-
-    public void onHitRobot(HitRobotEvent e) {
-        // Resposta ao colidir com outro robô
-        if (e.isMyFault()) {
-            movingForward = !movingForward; // Inverte a direção do movimento ao colidir com outro robô
-        }
-    }
-
-    public void onWin(WinEvent event) {
-        // Ação a ser executada quando o robô vencer a batalha
-        setAhead(0);
-        setTurnRight(360);
-        execute();
-    }
-
-    public void onDeath(DeathEvent event) {
-        // Ação a ser executada quando o robô for destruído
-        setAhead(0);
-        setTurnRight(360);
-        execute();
-    }
+    // ... (implemente métodos para acessar e modificar as coordenadas do ponto)
 }
