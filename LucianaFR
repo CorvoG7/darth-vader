@@ -1,0 +1,106 @@
+import robocode.*;
+import java.awt.Color;
+
+public class LucianaFR extends AdvancedRobot {
+    private static final double FIRE_POWER = 3; // Poder de fogo dos tiros
+    private static final double MOVE_DISTANCE = 100; // Distância de movimento padrão
+    private static final double WALL_MARGIN = 40; // Margem de segurança em relação às paredes
+    private static final double RADAR_TURN_RATE = Math.PI / 4; // Taxa de rotação do radar
+    private static final double GUN_TURN_RATE = Math.PI / 6; // Taxa de rotação da arma
+
+    private boolean movingForward = true; // Indica se o robô está se movendo para frente
+
+    public void run() {
+        setColors(Color.red, Color.blue, Color.green); // Configuração das cores
+
+        while (true) {
+            // Movimento
+            executarMovimento();
+
+            // Mira
+            executarMira();
+
+            // Ajuste de velocidade
+            ajustarVelocidade();
+
+            // Verificar se está perto de uma parede
+            verificarProximidadeParede();
+
+            // Verificar se o radar está girando
+            if (getRadarTurnRemaining() == 0) {
+                setTurnRadarRightRadians(Double.POSITIVE_INFINITY); // Girar o radar continuamente
+            }
+
+            execute(); // Execução dos comandos
+        }
+    }
+
+    public void onScannedRobot(ScannedRobotEvent e) {
+        // Resposta à detecção de um robô inimigo
+        double absoluteBearing = getHeadingRadians() + e.getBearingRadians();
+        double bearingFromGun = Utils.normalRelativeAngle(absoluteBearing - getGunHeadingRadians());
+        turnGunRightRadians(bearingFromGun);
+
+        if (Math.abs(bearingFromGun) <= GUN_TURN_RATE) {
+            fire(FIRE_POWER);
+        }
+    }
+
+    private void executarMovimento() {
+        // Movimentar-se para frente ou para trás
+        if (movingForward) {
+            setAhead(MOVE_DISTANCE);
+        } else {
+            setBack(MOVE_DISTANCE);
+        }
+    }
+
+    private void executarMira() {
+        // Ajustar a mira para o inimigo mais próximo
+        setTurnGunRightRadians(Utils.normalRelativeAngle(getHeadingRadians() + getBearingRadians() - getGunHeadingRadians()));
+    }
+
+    private void ajustarVelocidade() {
+        // Ajustar a velocidade com base na distância do inimigo
+        if (getOthers() > 3) {
+            setMaxVelocity(8);
+        } else {
+            setMaxVelocity(5);
+        }
+    }
+
+    private void verificarProximidadeParede() {
+        // Verificar se o robô está próximo de uma parede e ajustar o movimento
+        double x = getX();
+        double y = getY();
+        if (x <= WALL_MARGIN || y <= WALL_MARGIN || x >= getBattleFieldWidth() - WALL_MARGIN || y >= getBattleFieldHeight() - WALL_MARGIN) {
+            movingForward = !movingForward;
+        }
+    }
+
+    public void onHitWall(HitWallEvent e) {
+        // Resposta ao colidir com uma parede
+        movingForward = !movingForward; // Inverte a direção do movimento ao colidir com a parede
+    }
+
+    public void onHitRobot(HitRobotEvent e) {
+        // Resposta ao colidir com outro robô
+        if (e.isMyFault()) {
+            movingForward = !movingForward; // Inverte a direção do movimento ao colidir com outro robô
+        }
+    }
+
+    public void onWin(WinEvent event) {
+        // Ação a ser executada quando o robô vencer a batalha
+        setAhead(0);
+        setTurnRight(360);
+        execute();
+    }
+
+    public void onDeath(DeathEvent event) {
+        // Ação a ser executada quando o robô for destruído
+        setAhead(0);
+        setTurnRight(360);
+        execute();
+    }
+}
