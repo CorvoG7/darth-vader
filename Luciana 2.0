@@ -1,0 +1,111 @@
+import robocode.*;
+import java.awt.Color;
+import java.awt.geom.Point2D;
+
+public class LucianaFR extends AdvancedRobot {
+    private static final double FIRE_POWER = 2; // Poder de fogo dos tiros
+    private static final double WALL_MARGIN = 60; // Margem de segurança em relação às paredes
+    private static final double GUN_TURN_RATE = Math.PI / 18; // Taxa de rotação da arma
+
+    private boolean movingForward = true; // Indica se o robô está se movendo para frente
+    private double lastEnemyEnergy = 100; // Energia do último inimigo escaneado
+    private int moveDirection = 1; // Direção de movimento
+
+    public void run() {
+        // Configuração das cores
+        setColors(Color.red, Color.blue, Color.green);
+
+        // Inicializa o radar para varrer continuamente
+        setAdjustRadarForRobotTurn(true);
+        setAdjustGunForRobotTurn(true);
+        setAdjustRadarForGunTurn(true);
+
+        // Configura o radar para girar continuamente
+        setTurnRadarRight(Double.POSITIVE_INFINITY);
+
+        while (true) {
+            executarMovimento();
+            execute();
+        }
+    }
+
+    public void onScannedRobot(ScannedRobotEvent e) {
+        // Ajusta o radar para manter o inimigo no centro
+        double radarTurn = getHeadingRadians() + e.getBearingRadians() - getRadarHeadingRadians();
+        setTurnRadarRightRadians(2 * robocode.util.Utils.normalRelativeAngle(radarTurn));
+
+        // Mira e atira no inimigo usando mira preditiva
+        double bulletPower = Math.min(FIRE_POWER, getEnergy());
+        double bulletSpeed = 20 - 3 * bulletPower;
+        double enemyDistance = e.getDistance();
+        double enemyHeading = e.getHeadingRadians();
+        double enemyVelocity = e.getVelocity();
+
+        // Calcular a posição futura do inimigo
+        double deltaTime = enemyDistance / bulletSpeed;
+        double futureX = getX() + e.getVelocity() * deltaTime * Math.sin(e.getHeadingRadians());
+        double futureY = getY() + e.getVelocity() * deltaTime * Math.cos(e.getHeadingRadians());
+        double futureBearing = absoluteBearing(getX(), getY(), futureX, futureY);
+
+        // Ajustar a mira
+        double gunTurn = robocode.util.Utils.normalRelativeAngle(futureBearing - getGunHeadingRadians());
+        setTurnGunRightRadians(gunTurn);
+
+        if (getGunHeat() == 0 && Math.abs(gunTurn) < GUN_TURN_RATE) {
+            fire(bulletPower);
+        }
+
+        // Ajusta o movimento baseado na energia do inimigo
+        if (lastEnemyEnergy > e.getEnergy()) {
+            movingForward = !movingForward;
+            setAhead(150 * (movingForward ? 1 : -1));
+        }
+
+        lastEnemyEnergy = e.getEnergy();
+    }
+
+    public void onHitByBullet(HitByBulletEvent e) {
+        moveDirection *= -1;
+        setAhead(150 * moveDirection);
+    }
+
+    public void onHitWall(HitWallEvent e) {
+        moveDirection *= -1;
+        setAhead(150 * moveDirection);
+    }
+
+    private void executarMovimento() {
+        if (movingForward) {
+            setAhead(100 * moveDirection);
+        } else {
+            setBack(100 * moveDirection);
+        }
+
+        // Verifica se está perto das paredes e ajusta o movimento para evitar colisões
+        if (getX() <= WALL_MARGIN || getY() <= WALL_MARGIN ||
+            getX() >= getBattleFieldWidth() - WALL_MARGIN || getY() >= getBattleFieldHeight() - WALL_MARGIN) {
+            moveDirection *= -1;
+            setAhead(150 * moveDirection);
+        }
+    }
+
+    private double absoluteBearing(double x1, double y1, double x2, double y2) {
+        double xo = x2 - x1;
+        double yo = y2 - y1;
+        double hyp = Point2D.distance(x1, y1, x2, y2);
+        double arcSin = Math.asin(xo / hyp);
+        double bearing = 0;
+
+        if (xo > 0 && yo > 0) {
+            bearing = arcSin;
+        } else if (xo < 0 && yo > 0) {
+            bearing = 2 * Math.PI - arcSin;
+        } else if (xo > 0 && yo < 0) {
+            bearing = Math.PI - arcSin;
+        } else if (xo < 0 && yo < 0) {
+            bearing = Math.PI + arcSin;
+        }
+
+        return bearing;
+    }
+}
